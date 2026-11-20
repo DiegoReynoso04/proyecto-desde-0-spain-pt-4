@@ -1,0 +1,24 @@
+# Normaliza finales de línea: LF en el repo y en los contenedores Linux.
+* text=auto eol=lf
+
+# Scripts de Windows con CRLF
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Scripts de shell siempre LF (se ejecutan dentro de Docker)
+*.sh text eol=lf
+
+# Binarios
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.avif binary
+*.ico binary
+*.pdf binary
+*.xlsx binary
+*.xls binary
+*.woff binary
+*.woff2 binary

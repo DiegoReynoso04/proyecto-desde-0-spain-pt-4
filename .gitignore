@@ -1,0 +1,72 @@
+# =====================================================================
+# TallerYA — .gitignore
+# =====================================================================
+
+# ---------- Variables de entorno (secretos) ----------
+.env
+.env.*
+*.env
+!.env.example
+
+# ---------- Python / FastAPI ----------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# ---------- Node / Next.js ----------
+node_modules/
+.next/
+out/
+build/
+dist/
+next-env.d.ts
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.vercel/
+
+# ---------- Tests E2E (Playwright) ----------
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
+# ---------- Docker ----------
+docker-compose.override.local.yml
+*.pid
+
+# ---------- Datos locales y exportaciones ----------
+*.sqlite3
+*.db
+backups/
+exports/
+uploads/
+
+# ---------- Logs ----------
+logs/
+*.log
+
+# ---------- Editores y sistema operativo ----------
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------- Claude Code (ajustes locales) ----------
+.claude/settings.local.json
