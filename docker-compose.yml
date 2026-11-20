@@ -1,0 +1,108 @@
+# TallerYA — servicios base (producción-like).
+# En desarrollo, docker-compose.override.yml se aplica automáticamente (hot reload).
+# Producción local sin override:  docker compose -f docker-compose.yml up --build
+
+name: tallerya
+
+services:
+  # PostgreSQL local: SOLO para tests (y trabajo sin conexión). La app usa Supabase.
+  db:
+    image: postgres:17-alpine
+    env_file: .env
+    environment:
+      TZ: UTC
+      PGTZ: UTC
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  # SMTP de pruebas: captura todos los correos (nunca se envían de verdad).
+  mailpit:
+    image: axllent/mailpit:v1.34
+    env_file: .env
+    ports:
+      - "${MAILPIT_UI_PORT:-8025}:8025"
+      - "1025:1025"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # API FastAPI. Se conecta a Supabase vía DATABASE_URL.
+  # Las migraciones NO se ejecutan al arrancar: docker compose exec backend alembic upgrade head
+  backend:
+    build:
+      context: ./backend
+      target: prod
+    env_file: .env
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    depends_on:
+      mailpit:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health/live', timeout=3)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+    restart: unless-stopped
+
+  # Next.js. Las NEXT_PUBLIC_* y API_INTERNAL_URL se fijan en el build.
+  frontend:
+    build:
+      context: ./frontend
+      target: prod
+      args:
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3000}
+        NEXT_PUBLIC_API_BASE: ${NEXT_PUBLIC_API_BASE:-/api/v1}
+        API_INTERNAL_URL: ${API_INTERNAL_URL:-http://backend:8000}
+    env_file: .env
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    restart: unless-stopped
+
+  # Opcional: inspeccionar la BD local.  docker compose --profile tools up adminer
+  adminer:
+    image: adminer:5
+    profiles: ["tools"]
+    ports:
+      - "${ADMINER_PORT:-8080}:8080"
+    depends_on:
+      - db
+
+  # pre-commit en Linux (ver scripts/pre-commit.ps1). No necesita el .env.
+  precommit:
+    build: ./tools/pre-commit
+    profiles: ["tools"]
+    volumes:
+      - .:/src
+      - precommit-cache:/cache
+
+volumes:
+  db-data:
+  precommit-cache:

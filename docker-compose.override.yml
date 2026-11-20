@@ -1,0 +1,27 @@
+# Desarrollo: hot reload con código montado. Se aplica automáticamente con `docker compose up`.
+# Docker Desktop (WSL2) no propaga eventos de ficheros de Windows: se usa polling.
+
+services:
+  backend:
+    build:
+      target: dev
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload", "--reload-dir", "app"]
+    environment:
+      WATCHFILES_FORCE_POLLING: "true"
+    volumes:
+      - ./backend:/app
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      target: dev
+    environment:
+      NODE_ENV: development
+      WATCHPACK_POLLING: "true"
+    volumes:
+      - ./frontend:/app
+      # node_modules y .next de la imagen (binarios Linux), no los de Windows.
+      - /app/node_modules
+      - /app/.next
