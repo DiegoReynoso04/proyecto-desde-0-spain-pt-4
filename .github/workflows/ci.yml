@@ -1,0 +1,120 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pre-commit:
+    name: Pre-commit (formato, secretos)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v10
+      - name: Ejecutar pre-commit en todo el repo
+        run: uvx pre-commit run --all-files --show-diff-on-failure
+
+  backend:
+    name: Backend (lint, tipos, seguridad, tests)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    # PostgreSQL de servicio: la CI NUNCA se conecta a Supabase.
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: tallerya
+          POSTGRES_PASSWORD: tallerya
+          POSTGRES_DB: tallerya_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tallerya -d tallerya_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      APP_ENV: test
+      TEST_DATABASE_URL: postgresql+psycopg://tallerya:tallerya@localhost:5432/tallerya_test
+      DATABASE_URL: postgresql+psycopg://tallerya:tallerya@localhost:5432/tallerya_test
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+        with:
+          python-version: "3.14"
+          enable-cache: true
+      - name: Generar secretos efímeros para la configuración
+        run: |
+          for name in JWT_SECRET_KEY JWT_REFRESH_SECRET_KEY PASSWORD_RESET_SECRET_KEY CSRF_SECRET_KEY PAYMENT_SIMULATION_SECRET; do
+            value=$(python -c "import secrets; print(secrets.token_urlsafe(48))")
+            echo "::add-mask::$value"
+            echo "$name=$value" >> "$GITHUB_ENV"
+          done
+      - run: uv sync --frozen
+      - name: ruff (lint)
+        run: uv run ruff check .
+      - name: ruff (formato)
+        run: uv run ruff format --check .
+      - name: mypy
+        run: uv run mypy
+      - name: bandit
+        run: uv run bandit -c pyproject.toml -r app
+      - name: pip-audit
+        run: uv run pip-audit --skip-editable
+      - name: pytest + cobertura
+        run: uv run pytest --cov=app --cov-report=term-missing --cov-report=xml
+
+  frontend:
+    name: Frontend (lint, tipos, tests, build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "26"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - name: ESLint
+        run: npm run lint
+      - name: tsc --noEmit
+        run: npm run typecheck
+      - name: Prettier
+        run: npm run format:check
+      - name: Vitest
+        run: npm test
+      - name: npm audit
+        run: npm audit --audit-level=high
+      - name: next build
+        run: npm run build
+
+  docker:
+    name: Imágenes Docker (producción)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build backend
+        run: docker build --target prod -t tallerya-backend:ci backend
+      - name: Build frontend
+        run: docker build --target prod -t tallerya-frontend:ci frontend
+      - name: Las imágenes no se ejecutan como root
+        run: |
+          test "$(docker run --rm --entrypoint id tallerya-backend:ci -u)" != "0"
+          test "$(docker run --rm --entrypoint id tallerya-frontend:ci -u)" != "0"
