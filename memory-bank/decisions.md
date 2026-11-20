@@ -61,6 +61,17 @@ Formato: fecha · decisión · motivo · alternativas descartadas.
 - `BACKEND_PORT`, `FRONTEND_PORT`, `ADMINER_PORT` con valores por defecto 8000/3000/8080.
 - Motivo: en la máquina del usuario 8000 y 3000 los usa otro proyecto.
 
+## 2026-11-20 — Verificar que existen las versiones de las acciones de GitHub
+- Incidente: la CI del PR #1 falló porque `astral-sh/setup-uv@v10` no existe. La release
+  `v10.4.0` sí existe, pero setup-uv ya no publica tags de versión mayor (el último es `v7`).
+- Decisión: **antes de usar una acción, comprobar que el tag existe**:
+  `gh api repos/<owner>/<repo>/git/ref/tags/<tag>` (404 = no existe). No basta con mirar la
+  última release. Se usa `astral-sh/setup-uv@v7`.
+
+## 2026-11-20 — `next typegen` antes de `tsc --noEmit`
+- Los tipos globales de rutas (`LayoutProps`, `PageProps`) los genera Next en `.next/`; en una
+  checkout limpia (CI) no existen hasta el build. Script: `"typecheck": "next typegen && tsc --noEmit"`.
+
 ## 2026-11-20 — `env_file: .env` en todos los servicios
 - Se sigue el requisito del prompt. Riesgo asumido: `db` y `frontend` reciben variables que no usan
   (incluidos secretos del backend) solo en el entorno del contenedor; nunca llegan al navegador
