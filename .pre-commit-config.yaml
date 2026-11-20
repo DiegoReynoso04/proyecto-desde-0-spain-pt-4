@@ -1,0 +1,43 @@
+# Instalar una vez:  uv tool install pre-commit  &&  pre-commit install
+# Ejecutar a mano:   pre-commit run --all-files
+# mypy, ESLint, tsc y los tests se ejecutan en la CI (ver CLAUDE.md para lanzarlos en local).
+
+repos:
+  - repo: local
+    hooks:
+      - id: forbid-env-file
+        name: Prohibido commitear .env (secretos)
+        language: fail
+        entry: "El archivo .env contiene secretos y no puede subirse. Usa .env.example."
+        files: '(^|/)\.env$|(^|/)\.env\.(?!example$)[^/]+$'
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+        args: [--fix=lf]
+        exclude: '\.(ps1|bat|cmd)$'
+      - id: check-yaml
+      - id: check-toml
+      - id: check-json
+        exclude: 'tsconfig\.json$'
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=800]
+      - id: detect-private-key
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.17.6
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+        files: ^backend/
+      - id: ruff-format
+        files: ^backend/

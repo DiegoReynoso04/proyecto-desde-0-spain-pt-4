@@ -1,0 +1,47 @@
+@import "tailwindcss";
+
+/*
+ * Tokens de TallerYA (Tailwind v4). Mantener sincronizado con lib/design-tokens.ts.
+ * Contrastes permitidos (WCAG 2.2 AA):
+ *   cacao-700 sobre crema-50  → 7,57:1  texto normal
+ *   tinta-900 sobre ocre-400  → 7,11:1  texto de botones primarios
+ *   terracota-500 sobre crema-50 → 3,67:1  SOLO texto grande, iconos y bordes
+ * Prohibido: blanco sobre ocre-400 y ocre-400 como color de texto.
+ */
+@theme {
+  --color-ocre-400: #d99f59;
+  --color-ocre-300: #d99962;
+  --color-terracota-500: #a67153;
+  --color-cacao-700: #733f2d;
+  --color-crema-50: #f2f2f2;
+  --color-tinta-900: #1f1f1f;
+
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-crema-50 font-sans text-cacao-700 antialiased;
+  }
+
+  /* Foco visible: anillo cacao-700 de 2 px con separación. */
+  :focus-visible {
+    outline: 2px solid var(--color-cacao-700);
+    outline-offset: 2px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
